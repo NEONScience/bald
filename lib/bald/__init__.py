@@ -23,6 +23,8 @@ import six
 from bald import datetime, distribution
 import bald.validation as bv
 
+from S3netCDF4._s3netCDF4 import s3Dataset as Dataset
+
 __version__ = '0.3.1'
 
 def _graph_html():
@@ -804,6 +806,7 @@ def load(afilepath):
         except NameError:
             pass
 
+
 def _prefixes_and_aliases(fhandle, identity, alias_dict, prefix_contexts, cache):
     # prefixes are defined as group attributes in a dedicated group, and/or
     # by external resources
@@ -1205,39 +1208,42 @@ def load_netcdf(afilepath, baseuri=None, alias_dict=None, prefix_contexts=None, 
     if cache is None:
         cache = HttpCache()
 
-    with load(afilepath) as fhandle:
+    if afilepath.startswith("s3"):
+        fhandle = Dataset(afilepath, "r")
+    else:
+        fhandle = load(afilepath)
 
         # ensure that baseuri always terminates in a '/'
-        if baseuri is None:
-            baseuri = 'file://{}/'.format(afilepath)
-        elif type(baseuri) == str and not baseuri.endswith('/'):
-            baseuri = '{}/'.format(baseuri)
+    if baseuri is None:
+        baseuri = 'file://{}/'.format(afilepath)
+    elif type(baseuri) == str and not baseuri.endswith('/'):
+        baseuri = '{}/'.format(baseuri)
 
-        identity = baseuri
+    identity = baseuri
 
-        prefixes, aliases, aliasgraph, prefix_group_name = _prefixes_and_aliases(fhandle, identity, alias_dict,
-                                                                                 prefix_contexts, cache)
+    prefixes, aliases, aliasgraph, prefix_group_name = _prefixes_and_aliases(fhandle, identity, alias_dict,
+                                                                                prefix_contexts, cache)
 
-        attrs = {}
-        for k in fhandle.ncattrs():
-            attrs[k] = getattr(fhandle, k)
+    attrs = {}
+    for k in fhandle.ncattrs():
+        attrs[k] = getattr(fhandle, k)
 
-        root_container = Container(baseuri, baseuri, '', attrs, prefixes=prefixes,
-                                   aliases=aliases, alias_graph=aliasgraph,
-                                   file_resource=True, file_locator=file_locator)
+    root_container = Container(baseuri, baseuri, '', attrs, prefixes=prefixes,
+                                aliases=aliases, alias_graph=aliasgraph,
+                                file_resource=True, file_locator=file_locator)
 
-        root_container.attrs['bald__contains'] = set()
-        
-        file_variables = {}
-        _load_netcdf_group_vars(fhandle, fhandle, root_container, baseuri, baseuri, attrs, file_variables, prefixes,
-                                prefix_group_name, aliases, aliasgraph, cache)
+    root_container.attrs['bald__contains'] = set()
+    
+    file_variables = {}
+    _load_netcdf_group_vars(fhandle, fhandle, root_container, baseuri, baseuri, attrs, file_variables, prefixes,
+                            prefix_group_name, aliases, aliasgraph, cache)
 
-        for gk in fhandle.groups:
-            if gk == prefix_group_name:
-                continue
+    for gk in fhandle.groups:
+        if gk == prefix_group_name:
+            continue
 
-            _load_netcdf_group(fhandle, fhandle.groups[gk], baseuri, identity, gk, root_container, file_variables,
-                               prefixes, prefix_group_name, aliases, aliasgraph, cache)
+        _load_netcdf_group(fhandle, fhandle.groups[gk], baseuri, identity, gk, root_container, file_variables,
+                            prefixes, prefix_group_name, aliases, aliasgraph, cache)
     # _create_references(root_container,
     #                    prefixes, prefix_group_name, aliases, aliasgraph, cache)
 
