@@ -23,7 +23,6 @@ import six
 from bald import datetime, distribution
 import bald.validation as bv
 
-from S3netCDF4._s3netCDF4 import s3Dataset as Dataset
 
 __version__ = '0.3.1'
 
@@ -1193,7 +1192,7 @@ def _load_netcdf_group_vars(fhandle, agroup, root_container, baseuri, identity_p
                                                    aliases, aliasgraph)
 
 
-def load_netcdf(afilepath, baseuri=None, alias_dict=None, prefix_contexts=None, cache=None, file_locator=None):
+def load_netcdf(afilepath, baseuri=None, alias_dict=None, prefix_contexts=None, cache=None, file_locator=None, memory=None):
     """
     Load a file with respect to binary-array-linked-data.
     Returns a :class:`bald.Collection`
@@ -1208,8 +1207,8 @@ def load_netcdf(afilepath, baseuri=None, alias_dict=None, prefix_contexts=None, 
     if cache is None:
         cache = HttpCache()
 
-    if afilepath.startswith("s3"):
-        fhandle = Dataset(afilepath, "r")
+    if not afilepath:
+        fhandle = netCDF4.Dataset(None, memory=memory)
     else:
         fhandle = load(afilepath)
 
